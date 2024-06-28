@@ -18,11 +18,7 @@ export class FacadeService {
   private readonly categoryService = inject(CategoryService);
 
   public getProducts(): Observable<Product[]> {
-    return this.productService.getProducts().pipe(
-      tap(() => {
-        console.log('getProducts');
-      })
-    );
+    return this.productService.getProducts();
   }
 
   public getProductByd(id: number): Observable<Product> {

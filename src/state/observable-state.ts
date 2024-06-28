@@ -85,23 +85,23 @@ export class ObservableState<T extends Record<string, unknown>>
    * pass in an object with keys that belong to the state with their observable
    * @param object
    */
-  public connect(object: Partial<{ [P in keyof T]: Observable<T[P]> }>): void {
-    Object.keys(object).forEach((key: keyof Partial<T>) => {
-      if (!this.triggers[key]) {
-        this.triggers[key] = new ReplaySubject<void>(1);
-        this.triggers[key]!.next(); // Emit initial value
-      }
+public connect(object: Partial<{ [P in keyof T]: Observable<T[P]> }>): void {
+  Object.keys(object).forEach(key => {
+    const typedKey = key as keyof T;  // Explicitně typujeme klíč
 
-      combineLatest([this.triggers[key]!, object[key]!])
-        .pipe(
-          switchMap(([_, value]) => object[key]!.pipe(startWith(value))),
-          takeUntil(this.destroy$$)
-        )
-        .subscribe((v: Partial<T>[keyof Partial<T>]) => {
-          this.patch({ [key]: v } as Partial<T>);
-        });
-    });
-  }
+    if (!this.triggers[typedKey]) {
+      this.triggers[typedKey] = new ReplaySubject<void>(1);
+      this.triggers[typedKey]!.next();  // Emit initial value
+    }
+
+    combineLatest([this.triggers[typedKey]!, object[typedKey]!])
+      .pipe(
+        switchMap(([_, value]) => object[typedKey]!.pipe(startWith(value))),
+        takeUntil(this.destroy$$)
+      )
+      .subscribe(value => this.patch({ [typedKey]: value } as Partial<T>));
+  });
+}
 
   /**
    * Returns the entire state when one of the properties matching the passed keys changes
