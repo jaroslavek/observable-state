@@ -8,7 +8,7 @@ import { CreateCategoryDto } from '../types/create-category.dto';
 @Injectable({ providedIn: 'root' })
 export class CategoryService {
   private readonly httpClient = inject(HttpClient);
-  private apiUrl = 'http://localhost:3000/categories';
+  private apiUrl = 'http://localhost:4000/categories';
 
   public createCategory(dto: CreateCategoryDto): Observable<Category> {
     return this.httpClient.post<Category>(this.apiUrl, dto);

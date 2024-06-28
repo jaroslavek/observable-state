@@ -8,7 +8,7 @@ import { CreateProductDto } from '../types/create-product.dto';
 @Injectable({ providedIn: 'root' })
 export class ProductService {
   private readonly httpClient = inject(HttpClient);
-  private apiUrl = 'http://localhost:3000/products';
+  private apiUrl = 'http://localhost:4000/products';
 
   public createProduct(product: CreateProductDto): Observable<Product> {
     return this.httpClient.post<Product>(this.apiUrl, product);

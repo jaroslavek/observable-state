@@ -74,7 +74,8 @@
               "browserTarget": "observable-state-example:build:production"
             },
             "development": {
-              "browserTarget": "observable-state-example:build:development"
+              "browserTarget": "observable-state-example:build:development",
+              "port": 4400
             }
           },
           "defaultConfiguration": "development"

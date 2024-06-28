@@ -1,11 +1,13 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import {
   BehaviorSubject,
+  catchError,
   combineLatest,
   distinctUntilChanged,
   filter,
   map,
   Observable,
+  of,
   pipe,
   ReplaySubject,
   startWith,
@@ -85,23 +87,23 @@ export class ObservableState<T extends Record<string, unknown>>
    * pass in an object with keys that belong to the state with their observable
    * @param object
    */
-public connect(object: Partial<{ [P in keyof T]: Observable<T[P]> }>): void {
-  Object.keys(object).forEach(key => {
-    const typedKey = key as keyof T;  // Explicitně typujeme klíč
+  public connect(object: Partial<{ [P in keyof T]: Observable<T[P]> }>): void {
+    Object.keys(object).forEach((key) => {
+      const typedKey = key as keyof T; // Explicitně typujeme klíč
 
-    if (!this.triggers[typedKey]) {
-      this.triggers[typedKey] = new ReplaySubject<void>(1);
-      this.triggers[typedKey]!.next();  // Emit initial value
-    }
+      if (!this.triggers[typedKey]) {
+        this.triggers[typedKey] = new ReplaySubject<void>(1);
+        this.triggers[typedKey]!.next(); // Emit initial value
+      }
 
-    combineLatest([this.triggers[typedKey]!, object[typedKey]!])
-      .pipe(
-        switchMap(([_, value]) => object[typedKey]!.pipe(startWith(value))),
-        takeUntil(this.destroy$$)
-      )
-      .subscribe(value => this.patch({ [typedKey]: value } as Partial<T>));
-  });
-}
+      combineLatest([this.triggers[typedKey]!, object[typedKey]!])
+        .pipe(
+          switchMap(([_, value]) => object[typedKey]!.pipe(startWith(value))),
+          takeUntil(this.destroy$$)
+        )
+        .subscribe((value) => this.patch({ [typedKey]: value } as Partial<T>));
+    });
+  }
 
   /**
    * Returns the entire state when one of the properties matching the passed keys changes
@@ -172,6 +174,23 @@ public connect(object: Partial<{ [P in keyof T]: Observable<T[P]> }>): void {
       );
     }
     this.triggers[key]!.next();
+  }
+
+  /**
+   * Ošetřuje chyby pro daný Observable.
+   * @param observable
+   */
+  public handleErrors<U>(
+    observable: Observable<U>,
+    result: U = {} as U
+  ): Observable<U> {
+    return observable.pipe(
+      catchError((error) => {
+        console.error('Došlo k chybě:', error);
+        // Zde ošetřete chybu. Například můžete aktualizovat stav s chybou.
+        return of(result as U); // Pokud chcete chybu ošetřit výše v řetězci, znovu vyvolejte chybu.
+      })
+    );
   }
 
   public ngOnDestroy(): void {
