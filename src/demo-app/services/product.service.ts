@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, tap } from 'rxjs';
 import { UpdateProductDto } from '../types/update-product.dto';
 import { Product } from '../types/product.type';
 import { CreateProductDto } from '../types/create-product.dto';
@@ -15,7 +15,11 @@ export class ProductService {
   }
 
   public getProducts(): Observable<Product[]> {
-    return this.httpClient.get<Product[]>(this.apiUrl);
+    return this.httpClient.get<Product[]>(this.apiUrl).pipe(
+      tap(() => {
+        console.log('ProductService.getProducts');
+      })
+    );
   }
 
   public getProductById(id: number): Observable<Product> {

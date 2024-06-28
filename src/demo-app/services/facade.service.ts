@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, tap } from 'rxjs';
 import { ShoppingCartObservableState } from './shopping-cart-observable-state';
 import { Category } from '../types/category.type';
 import { ProductService } from './product.service';
@@ -11,12 +11,18 @@ import { ShoppingCartEntry } from '../types/shopping-cart-entry';
   providedIn: 'root',
 })
 export class FacadeService {
-  public readonly shoppingCartObservableState = inject(ShoppingCartObservableState);
+  public readonly shoppingCartObservableState = inject(
+    ShoppingCartObservableState
+  );
   private readonly productService = inject(ProductService);
   private readonly categoryService = inject(CategoryService);
 
   public getProducts(): Observable<Product[]> {
-    return this.productService.getProducts();
+    return this.productService.getProducts().pipe(
+      tap(() => {
+        console.log('getProducts');
+      })
+    );
   }
 
   public getProductByd(id: number): Observable<Product> {
@@ -32,10 +38,10 @@ export class FacadeService {
   }
 
   public addToShoppingCart(entry: ShoppingCartEntry): void {
-    this.shoppingCartObservableState.addToCart(entry)
+    this.shoppingCartObservableState.addToCart(entry);
   }
 
   public updateAmountInCart(id: number, amount: number): void {
-    this.shoppingCartObservableState.updateAmount(id, amount)
+    this.shoppingCartObservableState.updateAmount(id, amount);
   }
 }

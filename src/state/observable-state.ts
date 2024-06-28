@@ -1,5 +1,18 @@
 import { Injectable, OnDestroy } from '@angular/core';
-import { BehaviorSubject, distinctUntilChanged, filter, map, Observable, pipe, Subject, takeUntil, } from 'rxjs';
+import {
+  BehaviorSubject,
+  combineLatest,
+  distinctUntilChanged,
+  filter,
+  map,
+  Observable,
+  pipe,
+  ReplaySubject,
+  startWith,
+  Subject,
+  switchMap,
+  takeUntil,
+} from 'rxjs';
 
 const filterAndCastToT = <T>() =>
   pipe(
@@ -10,16 +23,21 @@ const filterAndCastToT = <T>() =>
 // we need this dirty fix because of an issue with BehaviorSubject
 // queuescheduler didn't cut it
 export class StateSubject<T> extends BehaviorSubject<T> {
-  public readonly syncState = this.asObservable().pipe(map(() => this.value)) as Observable<T>
+  public readonly syncState = this.asObservable().pipe(
+    map(() => this.value)
+  ) as Observable<T>;
 }
 
 @Injectable()
 export class ObservableState<T extends Record<string, unknown>>
-  implements OnDestroy {
+  implements OnDestroy
+{
   private readonly notInitializedError =
     'Observable state is not initialized yet, call the initialize() method';
   private readonly destroy$$ = new Subject<void>();
   private readonly state$$ = new StateSubject<T | null>(null);
+  private readonly triggers: { [P in keyof T]?: ReplaySubject<void> } = {};
+
   /**
    * Return the entire state as an observable
    * Only use this if you want to be notified on every update. For better optimization
@@ -57,9 +75,9 @@ export class ObservableState<T extends Record<string, unknown>>
   public initialize(state: T, inputState$?: Observable<Partial<T>>): void {
     this.state$$.next(state); // pass initial state
     // Feed the state when the input state gets a new value
-    inputState$?.pipe(
-      takeUntil(this.destroy$$)
-    ).subscribe((res: Partial<T>) => this.patch(res));
+    inputState$
+      ?.pipe(takeUntil(this.destroy$$))
+      .subscribe((res: Partial<T>) => this.patch(res));
   }
 
   /**
@@ -69,11 +87,19 @@ export class ObservableState<T extends Record<string, unknown>>
    */
   public connect(object: Partial<{ [P in keyof T]: Observable<T[P]> }>): void {
     Object.keys(object).forEach((key: keyof Partial<T>) => {
-      object[key]?.pipe(
-        takeUntil(this.destroy$$)
-      ).subscribe((v: Partial<T>[keyof Partial<T>]) => {
-        this.patch({ [key]: v } as Partial<T>);
-      });
+      if (!this.triggers[key]) {
+        this.triggers[key] = new ReplaySubject<void>(1);
+        this.triggers[key]!.next(); // Emit initial value
+      }
+
+      combineLatest([this.triggers[key]!, object[key]!])
+        .pipe(
+          switchMap(([_, value]) => object[key]!.pipe(startWith(value))),
+          takeUntil(this.destroy$$)
+        )
+        .subscribe((v: Partial<T>[keyof Partial<T>]) => {
+          this.patch({ [key]: v } as Partial<T>);
+        });
     });
   }
 
@@ -86,12 +112,11 @@ export class ObservableState<T extends Record<string, unknown>>
       filterAndCastToT<T>(),
       distinctUntilChanged((previous: T, current: T) =>
         keys.every(
-          (key: keyof T) =>
-            current[key as keyof T] === previous[key as keyof T]
+          (key: keyof T) => current[key as keyof T] === previous[key as keyof T]
         )
       ),
       takeUntil(this.destroy$$)
-    )
+    );
   }
 
   /**
@@ -132,6 +157,21 @@ export class ObservableState<T extends Record<string, unknown>>
       );
     });
     return returnObj;
+  }
+
+  /**
+   * Retriggers the producer function of the Observable that is connected to this key
+   * This only works in combination with the `connect()` method.
+   * @param key
+   */
+  public trigger(key: keyof T): void {
+    if (!this.triggers[key]) {
+      throw new Error(
+        'There is no trigger registered for this key! You need to connect an observable. ' +
+          'Please use connect to register the triggers'
+      );
+    }
+    this.triggers[key]!.next();
   }
 
   public ngOnDestroy(): void {

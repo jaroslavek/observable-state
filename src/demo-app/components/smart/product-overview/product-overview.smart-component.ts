@@ -20,11 +20,14 @@ type ProductOverviewState = {
   filteredProducts: Product[];
   pagedProducts: Product[];
   time: number;
-}
+};
 
-type ViewModel = Pick<ProductOverviewState, 'categories'|'query'|'products'|'itemsPerPage'|'pageIndex'|'time'> & {
+type ViewModel = Pick<
+  ProductOverviewState,
+  'categories' | 'query' | 'products' | 'itemsPerPage' | 'pageIndex' | 'time'
+> & {
   total: number;
-}
+};
 
 @Component({
   selector: 'sh-product-overview',
@@ -34,7 +37,7 @@ type ViewModel = Pick<ProductOverviewState, 'categories'|'query'|'products'|'ite
     SidebarUiComponent,
     ProductUiComponent,
     BreadcrumbUiComponent,
-    PagerUiComponent
+    PagerUiComponent,
   ],
   templateUrl: './product-overview.smart-component.html',
   styleUrls: ['./product-overview.smart-component.scss'],
@@ -52,15 +55,31 @@ export class ProductOverviewSmartComponent extends ObservableState<ProductOvervi
     },
   ];
 
-  private readonly filteredProducts$ = this.onlySelectWhen(['products', 'query']).pipe(
+  private readonly filteredProducts$ = this.onlySelectWhen([
+    'products',
+    'query',
+  ]).pipe(
     map(({ products, query }) => {
-      return products.filter(p => p.name.toLowerCase().indexOf(query.toLowerCase()) > -1)
+      return products.filter(
+        (p) => p.name.toLowerCase().indexOf(query.toLowerCase()) > -1
+      );
     })
   );
 
-  private readonly pagedProducts$ = this.onlySelectWhen(['filteredProducts', 'pageIndex', 'itemsPerPage']).pipe(
+  private readonly products$ = this.facadeService.getProducts().pipe(
+    map((products) => {
+      console.log('ProductOverviewSmartComponent.products$', products);
+      return products;
+    })
+  );
+
+  private readonly pagedProducts$ = this.onlySelectWhen([
+    'filteredProducts',
+    'pageIndex',
+    'itemsPerPage',
+  ]).pipe(
     map(({ filteredProducts, pageIndex, itemsPerPage }) => {
-      const offsetStart = (pageIndex) * itemsPerPage;
+      const offsetStart = pageIndex * itemsPerPage;
       const offsetEnd = (pageIndex + 1) * itemsPerPage;
       return filteredProducts.slice(offsetStart, offsetEnd);
     })
@@ -72,20 +91,30 @@ export class ProductOverviewSmartComponent extends ObservableState<ProductOvervi
     'pageIndex',
     'itemsPerPage',
     'query',
-    'time'
+    'time',
   ]).pipe(
-    map(({ categories, filteredProducts, pagedProducts, pageIndex, itemsPerPage, query, time }) => {
-      return {
-        total: filteredProducts.length,
-        query: query,
+    map(
+      ({
         categories,
-        itemsPerPage,
+        filteredProducts,
+        pagedProducts,
         pageIndex,
-        products: pagedProducts,
-        time
+        itemsPerPage,
+        query,
+        time,
+      }) => {
+        return {
+          total: filteredProducts.length,
+          query: query,
+          categories,
+          itemsPerPage,
+          pageIndex,
+          products: pagedProducts,
+          time,
+        };
       }
-    })
-  )
+    )
+  );
 
   constructor() {
     super();
@@ -97,7 +126,7 @@ export class ProductOverviewSmartComponent extends ObservableState<ProductOvervi
       products: [],
       filteredProducts: [],
       pagedProducts: [],
-      time: new Date().getTime()
+      time: new Date().getTime(),
     });
 
     this.connect({
@@ -105,14 +134,20 @@ export class ProductOverviewSmartComponent extends ObservableState<ProductOvervi
       categories: this.facadeService.getCategories(),
       filteredProducts: this.filteredProducts$,
       pagedProducts: this.pagedProducts$,
-      time: interval(1000).pipe(map(() => new Date().getTime()))
-    })
+      time: interval(1000).pipe(
+        map(() => {
+          const newDate = new Date().getTime();
+          // console.log('newDate', newDate);
+          return newDate;
+        })
+      ),
+    });
   }
 
-
-
   public setQuery(e: Event): void {
-    this.patch({ pageIndex: 0, query: (e.target as HTMLInputElement).value })
+    const query = (e.target as HTMLInputElement).value;
+    console.log('query', query);
+    this.patch({ pageIndex: 0, query });
   }
 
   public pageIndexChange(pageIndex: number): void {
@@ -120,6 +155,11 @@ export class ProductOverviewSmartComponent extends ObservableState<ProductOvervi
   }
 
   public itemsPerPageChange(itemsPerPage: number): void {
-    this.patch({ pageIndex: 0, itemsPerPage })
+    this.patch({ pageIndex: 0, itemsPerPage });
+  }
+
+  protected refreshProducts(): void {
+    // Results in new a `this.productService.getProducts()` call
+    this.trigger('products');
   }
 }
