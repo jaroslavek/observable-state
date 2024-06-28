@@ -1,6 +1,7 @@
 # Observable state repo
 
 This repository explains a custom implementation about Observable State explained in these articles (newest to oldest):
+- [Observable state in Angular](https://blog.simplified.courses/observable-state-in-angular/)
 - [How to prepare for Angular signals](https://blog.simplified.courses/how-to-prepare-for-angular-signals/)
 - [Evolving from the SIP principle towards observable state](https://blog.simplified.courses/evolving-from-the-sip-principle-towards-observable-state/)
 - [Observable component state in Angular](https://blog.simplified.courses/observable-state-in-smart-components/)
@@ -32,7 +33,7 @@ type MyUiComponentState = MyUiComponentInputState & {
   `
 })
 export class MyUiComponent extends ObservableState<MyUiComponentState> {
-  @InputState() public readonly inputState$!: ObservableState<MyUiComponentInputState>
+  @InputState() public readonly inputState$!: Observable<MyUiComponentInputState>
   @Input() public firstName = '';
   @Input() public lastName = '';
   @Input() public age = 0;
@@ -47,7 +48,7 @@ export class MyUiComponent extends ObservableState<MyUiComponentState> {
     }, this.inputState$)
   }
   
-  public readonly vm$ = this.state$;
+  public readonly vm$ = this.state$.pipe(map(state) => {...});
   
   public toggle(): void {
       this.patch({showAge: !this.snapshot.showAge})
@@ -85,7 +86,7 @@ type MyUiComponentState = MyUiComponentInputState & {
   `
 })
 export class MyUiComponent extends ObservableState<MyUiComponentState> {
-  @InputState() public readonly inputState$!: ObservableState<MyUiComponentInputState>
+  @InputState() public readonly inputState$!: Observable<MyUiComponentInputState>
   @Input() public firstName = '';
   @Input() public lastName = '';
   @Input() public age = 0;
